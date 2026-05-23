@@ -1,0 +1,4 @@
+# Antigravity Engine Dependencies
+fastapi
+uvicorn
+pydantic
