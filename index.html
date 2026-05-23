@@ -27,7 +27,6 @@
 </head>
 <body class="p-4 md:p-8">
     <div class="max-w-6xl mx-auto">
-        <!-- Header -->
         <header class="flex justify-between items-center mb-8">
             <div>
                 <h1 class="text-3xl font-bold accent-gold">LIFE OS</h1>
@@ -35,34 +34,20 @@
             </div>
             <div class="glass p-3 rounded-xl text-right">
                 <p class="text-xs opacity-50">STATUS</p>
-                <p class="font-mono font-bold">HERMES ONLINE</p>
+                <p class="font-mono font-bold" id="sys-status">CONNECTING...</p>
             </div>
         </header>
 
-        <!-- Main Dashboard Grid -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Column 1: Missions & Quests -->
             <div class="space-y-6">
                 <section class="glass p-6 rounded-2xl">
                     <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
                         <span>🎯</span> Missions
                     </h2>
-                    <div class="space-y-3">
-                        <div class="p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition cursor-pointer">
-                            <p class="text-sm font-medium">Physical Threshold: 10k Steps</p>
-                            <div class="w-full bg-gray-800 h-1 rounded-full mt-2">
-                                <div class="bg-gold h-1 rounded-full" style="width: 65%"></div>
-                            </div>
-                        </div>
-                        <div class="p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition cursor-pointer">
-                            <p class="text-sm font-medium">Cognitive Expansion: Read 20 pages</p>
-                            <div class="w-full bg-gray-800 h-1 rounded-full mt-2">
-                                <div class="bg-gold h-1 rounded-full" style="width: 30%"></div>
-                            </div>
-                        </div>
+                    <div class="space-y-3" id="missions-list">
+                        <p class="text-xs opacity-40">Loading missions...</p>
                     </div>
                 </section>
-
                 <section class="glass p-6 rounded-2xl">
                     <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
                         <span>⚔️</span> Skill Forge
@@ -80,26 +65,21 @@
                 </section>
             </div>
 
-            <!-- Column 2: Knowledge & Brain -->
             <div class="space-y-6">
                 <section class="glass p-6 rounded-2xl min-h-[400px] flex flex-col">
                     <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
                         <span>🧠</span> Knowledge (SRS)
                     </h2>
-                    
-                    <!-- Flashcard -->
                     <div class="card-flip w-full h-64 mb-6">
                         <div class="card-inner w-full h-full shadow-xl rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center p-6 text-center">
                             <div class="card-front flex items-center justify-center p-6 text-center">
-                                <p class="text-lg font-medium">Q: What is the habit loop according to Atomic Habits?</p>
+                                <p id="card-q" class="text-lg font-medium">Loading question...</p>
                             </div>
                             <div class="card-back flex items-center justify-center p-6 text-center bg-white/20 rounded-2xl">
-                                <p class="text-lg">A: Cue &rarr; Routine &rarr; Reward. The reward is the catalyst for repetition.</p>
+                                <p id="card-a" class="text-lg">Loading answer...</p>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Rating Buttons -->
                     <div class="flex justify-between gap-2 mt-auto">
                         <button class="px-3 py-1 rounded bg-red-500/20 text-red-400 border border-red-500/30 text-xs hover:bg-red-500/40">1</button>
                         <button class="px-3 py-1 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 text-xs hover:bg-orange-500/40">2</button>
@@ -111,7 +91,6 @@
                 </section>
             </div>
 
-            <!-- Column 3: Hermes Chat & OS -->
             <div class="space-y-6">
                 <section class="glass p-6 rounded-2xl h-[500px] flex flex-col">
                     <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
@@ -122,12 +101,91 @@
                         </div>
                     </div>
                     <div class="flex gap-2">
-                        <input type="text" placeholder="Command Hermes..." class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gold">
-                        <button class="bg-gold text-black font-bold px-4 py-2 rounded-lg text-sm hover:bg-yellow-600">Send</button>
+                        <input type="text" id="chat-input" placeholder="Command Hermes..." class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gold">
+                        <button id="send-btn" class="bg-gold text-black font-bold px-4 py-2 rounded-lg text-sm hover:bg-yellow-600">Send</button>
                     </div>
                 </section>
             </div>
         </div>
     </div>
+
+    <script>
+        const API_BASE = '/api';
+
+        async function updateStatus() {
+            try {
+                const res = await fetch(`${API_BASE}/status`);
+                const data = await res.json();
+                document.getElementById('sys-status').innerText = data.status;
+            } catch (e) {
+                document.getElementById('sys-status').innerText = 'OFFLINE';
+            }
+        }
+
+        async function loadMissions() {
+            try {
+                const res = await fetch(`${API_BASE}/missions`);
+                const data = await res.json();
+                const list = document.getElementById('missions-list');
+                list.innerHTML = '';
+                data.forEach(m => {
+                    list.innerHTML += `
+                        <div class="p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition cursor-pointer">
+                            <p class="text-sm font-medium">${m.title}</p>
+                            <div class="w-full bg-gray-800 h-1 rounded-full mt-2">
+                                <div class="bg-gold h-1 rounded-full" style="width: ${m.progress}%"></div>
+                            </div>
+                        </div>`;
+                });
+            } catch (e) {
+                console.error('Missions error:', e);
+            }
+        }
+
+        async function loadKnowledge() {
+            try {
+                const res = await fetch(`${API_BASE}/knowledge`);
+                const data = await res.json();
+                if (data.length > 0) {
+                    document.getElementById('card-q').innerText = data[0].q;
+                    document.getElementById('card-a').innerText = data[0].a;
+                }
+            } catch (e) {
+                console.error('Knowledge error:', e);
+            }
+        }
+
+        async function sendChat() {
+            const input = document.getElementById('chat-input');
+            const win = document.getElementById('chat-window');
+            const msg = input.value;
+            if (!msg) return;
+
+            win.innerHTML += `<div class="p-3 rounded-lg bg-white/10 border border-white/10 text-sm text-right"><span class="font-bold opacity-60">MASTER:</span> ${msg}</div>`;
+            input.value = '';
+
+            try {
+                const res = await fetch(`${API_BASE}/chat`, {
+                    method: 'POST',
+                     encoding: 'application/json',
+                     body: JSON.stringify({ message: msg })
+                });
+                const data = await res.json();
+                win.innerHTML += `<div class="p-3 rounded-lg bg-white/5 border border-white/10 text-sm"><span class="font-bold accent-gold">HERMES:</span> ${data.response}</div>`;
+                win.scrollTop = win.scrollHeight;
+            } catch (e) {
+                win.innerHTML += `<div class="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">Error connecting to Hermes.</div>`;
+            }
+        }
+
+        document.getElementById('send-btn').addEventListener('click', sendChat);
+        document.getElementById('chat-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendChat();
+        });
+
+        updateStatus();
+        loadMissions();
+        loadKnowledge();
+    </script>
 </body>
 </html>
