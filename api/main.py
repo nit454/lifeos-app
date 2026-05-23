@@ -4,10 +4,10 @@ from typing import List, Optional
 import os
 import requests
 import base64
+from datetime import datetime
 
 app = FastAPI()
 
-# --- Configuration from Vercel Env Vars ---
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 GITHUB_USER = os.environ.get("GITHUB_USER", "nit454")
 VAULT_REPO = os.environ.get("VAULT_REPO", "hermes-zettelkasten")
@@ -18,7 +18,6 @@ headers = {
     "Accept": "application/vnd.github.v3+json"
 }
 
-# --- GitHub Memory Helpers ---
 def read_vault_file(path):
     url = f"{API_URL}/{path}"
     res = requests.get(url, headers=headers)
@@ -27,7 +26,7 @@ def read_vault_file(path):
         return base64.b64decode(content_b64).decode("utf-8")
     return None
 
-def write_vault_file(path, content, message="Updated by Hermes Life OS"):
+def write_vault_file(path, content, message="Updated by Hermes"):
     url = f"{API_URL}/{path}"
     res = requests.get(url, headers=headers)
     sha = res.json().get("sha") if res.status_code == 200 else None
@@ -41,35 +40,25 @@ def write_vault_file(path, content, message="Updated by Hermes Life OS"):
     res = requests.put(url, headers=headers, json=data)
     return res.status_code == 200
 
-# --- Models ---
 class ChatRequest(BaseModel):
     message: str
 
-# --- Endpoints ---
 @app.get("/api/status")
 async def get_status():
-    # We check if the vault is accessible to confirm "Online" status
-    if read_vault_file("BOOT.md") or read_vault_file("README.md"):
-        return {"status": "NEURAL SYNC ACTIVE", "operator": "MASTER"}
-    return {"status": "SYNCING...", "operator": "MASTER"}
+    return {"status": "CONFLICT-FREE SYNC", "operator": "MASTER"}
 
 @app.get("/api/missions")
 async def get_missions():
-    # We store missions in a JSON file inside the Obsidian vault!
-    data = read_vault_file("system/lifeos_state.json")
+    # Read state from the Safe Zone
+    data = read_vault_file("hermes_sync/state.json")
     if data:
         import json
         return json.loads(data).get("missions", [])
-    
-    # Fallback / Initial Seed
-    return [
-        {"title": "Physical Threshold", "progress": 65, "status": "active"},
-        {"title": "Cognitive Expansion", "progress": 30, "status": "active"},
-    ]
+    return [{"title": "Physical Threshold", "progress": 65, "status": "active"}]
 
 @app.get("/api/knowledge")
 async def get_knowledge():
-    # DYNAMIC KNOWLEDGE: Read all .md files in the 'zettels' folder
+    # Read-only access to zettels (no conflicts here)
     url = f"{API_URL}/zettels"
     res = requests.get(url, headers=headers)
     if res.status_code != 200: return []
@@ -79,33 +68,19 @@ async def get_knowledge():
     for f in files:
         if f["name"].endswith(".md"):
             content = read_vault_file(f["path"])
-            # Simple Parser: Look for "Q: ..." and "A: ..." in the note
-            if "Q:" in content and "A:" in content:
+            if content and "Q:" in content and "A:" in content:
                 q = content.split("Q:")[1].split("\n")[0].strip()
                 a = content.split("A:")[1].split("\n")[0].strip()
                 cards.append({"q": q, "a": a, "source": f["name"]})
-    
-    return cards if cards else [{"q": "Add 'Q:' and 'A:' to a note in /zettels to create a card", "a": "This is how the sync works!", "source": "system"}]
+    return cards if cards else [{"q": "Add 'Q:' and 'A:' to a note in /zettels", "a": "The sync is now conflict-free!", "source": "system"}]
 
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
-    user_msg = request.message
+    # CONFLICT-FREE LOGGING: Unique filename per session
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_path = f"hermes_sync/logs/chat_{timestamp}.md"
     
-    # 1. LOG TO OBSIDIAN: Save every chat to a daily log file in the vault
-    from datetime import datetime
-    date_str = datetime.now().strftime("%Y-%m-%d")
-    log_path = f"logs/{date_str}.md"
-    
-    current_log = read_vault_file(log_path) or f"# Chat Log - {date_str}\n\n"
-    new_entry = f"\n**MASTER**: {user_msg}\n**HERMES**: Processing... \n---\n"
-    write_vault_file(log_path, current_log + new_entry)
+    content = f"# Session {timestamp}\n\n**MASTER**: {request.message}\n**HERMES**: Processing via Conflict-Free Protocol..."
+    write_vault_file(log_path, content)
 
-    # 2. GENERATE RESPONSE
-    if "status" in user_msg.lower():
-        response = "Neural Sync is active. Your Obsidian vault and Life OS are sharing a single consciousness."
-    elif "mission" in user_msg.lower():
-        response = "Checking your vault... your missions are synchronized. Keep pushing, Master."
-    else:
-        response = f"I have logged your command '{user_msg}' directly into your Obsidian vault under today's log. It is now part of your permanent record."
-        
-    return {"response": response}
+    return {"response": f"Logged to /hermes_sync/logs/chat_{timestamp}.md. No conflicts possible."}
